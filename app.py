@@ -3,6 +3,14 @@ import pandas as pd
 from datetime import datetime
 import gspread
 from google.oauth2.service_account import Credentials
+import unicodedata
+
+def normalizar_nombre(texto: str) -> str:
+    if not texto:
+        return ""
+    # Convertir a minúsculas y quitar acentos y espacios
+    texto = texto.strip().lower()
+    return ''.join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
 
 # ╔══════════════════════════════════════════════════════════════════╗
 # ║  COMEDOR UNIVERSITARIO — Sistema de Reservas                    ║
@@ -276,7 +284,7 @@ def find_active_reserva(nombre: str):
                 if len(row) >= 11:
                     row_nombre = row[1].strip()
                     row_estado = row[10].strip()
-                    if row_nombre.lower() == nombre.lower() and row_estado == "Activa":
+                    if normalizar_nombre(row_nombre) == normalizar_nombre(nombre) and row_estado == "Activa":
                         return {
                             "row_idx": idx + 1,
                             "Timestamp": row[0],
@@ -295,7 +303,7 @@ def find_active_reserva(nombre: str):
             pass
     else:
         for r in reversed(st.session_state.db_reservas):
-            if r["Nombre"].lower() == nombre.lower() and r["Estado"] == "Activa":
+            if normalizar_nombre(r["Nombre"]) == normalizar_nombre(nombre) and r["Estado"] == "Activa":
                 return r
     return None
 
@@ -376,42 +384,16 @@ if not primeros and not segundos:
 
 st.info("🥤 Todos los menús incluyen **bebida, ensalada y postre**  ·  Selecciona tus opciones abajo")
 
-# Mostrar última reserva confirmada si existe
+# Globos en recarga si aplica
 if st.session_state.trigger_balloons:
     st.balloons()
     st.session_state.trigger_balloons = False
-
-if st.session_state.ultima_reserva:
-    ur = st.session_state.ultima_reserva
-    st.markdown(f"""
-    <div class="reserva-ok">
-        <h4 style="margin:0 0 0.3rem 0; color:#0f5132; font-size:1.05rem;">🟢 Reserva confirmada</h4>
-        <p style="margin:0; font-size:0.95rem; color:#155724;">
-            Registrada con éxito a nombre de: <b>{ur['Nombre']}</b> ({ur['TipoMenu']})
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    with st.expander("👁️ Ver detalle de tu reserva confirmada"):
-        col_ur1, col_ur2 = st.columns(2)
-        with col_ur1:
-            if ur.get('Primero'): st.markdown(f"**Primero:** {ur['Primero']}")
-            if ur.get('Segundo'): st.markdown(f"**Segundo:** {ur['Segundo']}")
-            acomp_u = []
-            if ur.get('Acomp1'): acomp_u.append(ur['Acomp1'])
-            if ur.get('Acomp2'): acomp_u.append(ur['Acomp2'])
-            if acomp_u: st.markdown(f"**Acomp.:** {', '.join(acomp_u)}")
-        with col_ur2:
-            if ur.get('Ensalada'): st.markdown(f"**Ensalada:** {ur['Ensalada']}")
-            if ur.get('Postre'): st.markdown(f"**Postre:** {ur['Postre']}")
-            st.markdown("**Bebida:** Incluida")
-        st.caption(f"Registrado el {ur['Timestamp']}. Si necesitas cambiarla, puedes cancelarla abajo.")
 
 
 # ─── SELECTOR DE TIPO DE MENÚ ────────────────────────────────────
 
 st.markdown("🍴 **Tipo de Menú**")
-st.caption("💡 *Menú Entero: 1 primero + 1 segundo  ·  Medio Menú: 1 plato en total*")
+st.caption("💡 *Menú Entero: 1 primero + 1 segundo  ·  Medio Menú: 1 plato a elegir*")
 tipo_menu = st.radio(
     "Tipo de Menú",
     options=["Menú Entero", "Medio Menú"],
@@ -507,7 +489,6 @@ with st.form("reserva_form", clear_on_submit=False):
         acomp_sel = st.multiselect(
             "Elige tus guarniciones",
             options=[a["Plato"] for a in acomps],
-            max_selections=2,
             placeholder="Selecciona hasta 2 acompañamientos",
             format_func=lambda x: fmt_stock(
                 x,
@@ -586,6 +567,8 @@ if submitted:
         st.error("⚠️ Selecciona un primer plato y un segundo plato.")
     elif tipo_menu == "Medio Menú" and not plato_unico:
         st.error("⚠️ Selecciona un plato.")
+    elif len(acomp_sel) > 2:
+        st.error("⚠️ Solo puedes elegir un máximo de 2 acompañamientos. Desmarca alguno.")
     else:
         # Construir registro
         if tipo_menu == "Menú Entero":
@@ -618,6 +601,33 @@ if submitted:
             st.rerun()
         else:
             st.error("❌ Error al guardar la reserva. Inténtalo de nuevo.")
+
+# Mostrar última reserva confirmada si existe (abajo del formulario)
+if st.session_state.ultima_reserva:
+    ur = st.session_state.ultima_reserva
+    st.markdown(f"""
+    <div class="reserva-ok">
+        <h4 style="margin:0 0 0.3rem 0; color:#0f5132; font-size:1.05rem;">🟢 Reserva confirmada</h4>
+        <p style="margin:0; font-size:0.95rem; color:#155724;">
+            Registrada con éxito a nombre de: <b>{ur['Nombre']}</b> ({ur['TipoMenu']})
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    with st.expander("👁️ Ver detalle de tu reserva confirmada", expanded=True):
+        col_ur1, col_ur2 = st.columns(2)
+        with col_ur1:
+            if ur.get('Primero'): st.markdown(f"**Primero:** {ur['Primero']}")
+            if ur.get('Segundo'): st.markdown(f"**Segundo:** {ur['Segundo']}")
+            acomp_u = []
+            if ur.get('Acomp1'): acomp_u.append(ur['Acomp1'])
+            if ur.get('Acomp2'): acomp_u.append(ur['Acomp2'])
+            if acomp_u: st.markdown(f"**Acomp.:** {', '.join(acomp_u)}")
+        with col_ur2:
+            if ur.get('Ensalada'): st.markdown(f"**Ensalada:** {ur['Ensalada']}")
+            if ur.get('Postre'): st.markdown(f"**Postre:** {ur['Postre']}")
+            st.markdown("**Bebida:** Incluida")
+        st.caption(f"Registrado el {ur['Timestamp']}. Si necesitas cambiarla, puedes cancelarla abajo.")
 
 
 # ─── SECCIÓN DE VER / CANCELAR RESERVA ─────────────────────────────
@@ -680,7 +690,7 @@ with st.expander("🔍 Ver / Cancelar reserva"):
                 if exito:
                     st.success(msg)
                     # Si la reserva cancelada es la que está visible, la limpiamos
-                    if st.session_state.ultima_reserva and st.session_state.ultima_reserva["Nombre"].lower() == res["Nombre"].lower():
+                    if st.session_state.ultima_reserva and normalizar_nombre(st.session_state.ultima_reserva["Nombre"]) == normalizar_nombre(res["Nombre"]):
                         st.session_state.ultima_reserva = None
                     st.session_state.cancel_step = "search"
                     st.session_state.cancel_reserva_data = None
