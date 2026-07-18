@@ -134,6 +134,12 @@ if "db_menu" not in st.session_state:
 if "db_reservas" not in st.session_state:
     st.session_state.db_reservas = []
 
+if "ultima_reserva" not in st.session_state:
+    st.session_state.ultima_reserva = None
+
+if "trigger_balloons" not in st.session_state:
+    st.session_state.trigger_balloons = False
+
 # Estados para el flujo de cancelación
 if "cancel_step" not in st.session_state:
     st.session_state.cancel_step = "search"
@@ -370,14 +376,47 @@ if not primeros and not segundos:
 
 st.info("🥤 Todos los menús incluyen **bebida, ensalada y postre**  ·  Selecciona tus opciones abajo")
 
+# Mostrar última reserva confirmada si existe
+if st.session_state.trigger_balloons:
+    st.balloons()
+    st.session_state.trigger_balloons = False
+
+if st.session_state.ultima_reserva:
+    ur = st.session_state.ultima_reserva
+    st.markdown(f"""
+    <div class="reserva-ok">
+        <h4 style="margin:0 0 0.3rem 0; color:#0f5132; font-size:1.05rem;">🟢 Reserva confirmada</h4>
+        <p style="margin:0; font-size:0.95rem; color:#155724;">
+            Registrada con éxito a nombre de: <b>{ur['Nombre']}</b> ({ur['TipoMenu']})
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    with st.expander("👁️ Ver detalle de tu reserva confirmada"):
+        col_ur1, col_ur2 = st.columns(2)
+        with col_ur1:
+            if ur.get('Primero'): st.markdown(f"**Primero:** {ur['Primero']}")
+            if ur.get('Segundo'): st.markdown(f"**Segundo:** {ur['Segundo']}")
+            acomp_u = []
+            if ur.get('Acomp1'): acomp_u.append(ur['Acomp1'])
+            if ur.get('Acomp2'): acomp_u.append(ur['Acomp2'])
+            if acomp_u: st.markdown(f"**Acomp.:** {', '.join(acomp_u)}")
+        with col_ur2:
+            if ur.get('Ensalada'): st.markdown(f"**Ensalada:** {ur['Ensalada']}")
+            if ur.get('Postre'): st.markdown(f"**Postre:** {ur['Postre']}")
+            st.markdown("**Bebida:** Incluida")
+        st.caption(f"Registrado el {ur['Timestamp']}. Si necesitas cambiarla, puedes cancelarla abajo.")
+
 
 # ─── SELECTOR DE TIPO DE MENÚ ────────────────────────────────────
 
+st.markdown("🍴 **Tipo de Menú**")
+st.caption("💡 *Menú Entero: 1 primero + 1 segundo  ·  Medio Menú: 1 plato en total*")
 tipo_menu = st.radio(
-    "🍴 **Tipo de Menú**",
+    "Tipo de Menú",
     options=["Menú Entero", "Medio Menú"],
     horizontal=True,
-    help="Menú Entero → 1 primero + 1 segundo  ·  Medio Menú → 1 plato a elegir",
+    label_visibility="collapsed",
 )
 
 st.divider()
@@ -441,7 +480,7 @@ with st.form("reserva_form", clear_on_submit=False):
         st.markdown("**Elige 1 plato** (primero o segundo)")
         if todos_platos:
             labels = [
-                f"{'🥣' if cat == 'Primero' else '🥩'} {fmt_stock(nombre_p, stock)}"
+                f"🍽️ {fmt_stock(nombre_p, stock)}"
                 for cat, nombre_p, stock in todos_platos
             ]
             plato_idx = st.radio(
@@ -574,28 +613,8 @@ if submitted:
         ok = save_reserva(reserva)
 
         if ok:
-            st.success(f"✅ ¡Reserva confirmada para **{nombre.strip()}**!")
-            st.balloons()
-            
-            # Resumen visual
-            st.markdown('<div class="reserva-ok">', unsafe_allow_html=True)
-            col_r1, col_r2 = st.columns(2)
-            with col_r1:
-                st.markdown(f"**📋 Tipo:** {tipo_menu}")
-                if primero_final:
-                    st.markdown(f"**🥣 Primero:** {primero_final}")
-                if segundo_final:
-                    st.markdown(f"**🥩 Segundo:** {segundo_final}")
-                if acomp_sel:
-                    st.markdown(f"**🥗 Acomp.:** {', '.join(acomp_sel)}")
-            with col_r2:
-                if ensalada_sel:
-                    st.markdown(f"**🥬 Ensalada:** {ensalada_sel}")
-                if postre_sel:
-                    st.markdown(f"**🍰 Postre:** {postre_sel}")
-                st.markdown("**🥤 Bebida:** Incluida")
-            st.markdown("</div>", unsafe_allow_html=True)
-            
+            st.session_state.ultima_reserva = reserva
+            st.session_state.trigger_balloons = True
             st.rerun()
         else:
             st.error("❌ Error al guardar la reserva. Inténtalo de nuevo.")
@@ -660,6 +679,9 @@ with st.expander("🔍 Ver / Cancelar reserva"):
                 exito, msg = cancel_reserva_by_data(res)
                 if exito:
                     st.success(msg)
+                    # Si la reserva cancelada es la que está visible, la limpiamos
+                    if st.session_state.ultima_reserva and st.session_state.ultima_reserva["Nombre"].lower() == res["Nombre"].lower():
+                        st.session_state.ultima_reserva = None
                     st.session_state.cancel_step = "search"
                     st.session_state.cancel_reserva_data = None
                     st.rerun()
