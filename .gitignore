@@ -1,0 +1,18 @@
+# Streamlit secrets (contienen claves privadas de Google)
+.streamlit/secrets.toml
+
+# Python cache y bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Entornos virtuales
+.venv/
+venv/
+ENV/
+
+# Archivos del sistema u otros locales
+.DS_Store
+Thumbs.db
