@@ -2,8 +2,8 @@ import qrcode
 import os
 
 def generar_codigo_qr():
-    # URL de ejemplo. Cambiar por la URL real una vez desplegado en Streamlit Cloud
-    url_por_defecto = "https://comedor-uni.streamlit.app"
+    # URL de la aplicación en producción
+    url_por_defecto = "https://reservas-menus.streamlit.app/"
     
     print("====================================================")
     print("   GENERADOR DE CÓDIGO QR - COMEDOR UNIVERSITARIO   ")
