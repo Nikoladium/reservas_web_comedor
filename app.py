@@ -6,49 +6,13 @@ import gspread
 from google.oauth2.service_account import Credentials
 import unicodedata
 
-def normalizar_nombre(texto: str) -> str:
-    if not texto:
-        return ""
-    # Convertir a minúsculas y quitar acentos y espacios
-    texto = texto.strip().lower()
-    return ''.join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
-
-def parsear_fecha_menu(texto: str) -> str:
-    DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
-    MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-    now = datetime.now()
-    
-    if not texto or not str(texto).strip():
-        return f"{DIAS[now.weekday()]}, {now.day} de {MESES[now.month - 1]} de {now.year}"
-        
-    txt = str(texto).strip().lower()
-    txt_norm = normalizar_nombre(txt)
-    
-    if txt_norm == "manana":
-        manana = now + timedelta(days=1)
-        return f"{DIAS[manana.weekday()]}, {manana.day} de {MESES[manana.month - 1]} de {manana.year}"
-    elif txt_norm == "hoy":
-        return f"{DIAS[now.weekday()]}, {now.day} de {MESES[now.month - 1]} de {now.year}"
-        
-    try:
-        partes = txt.split("/")
-        if len(partes) >= 2:
-            dia = int(partes[0])
-            mes = int(partes[1])
-            anio = int(partes[2]) if len(partes) >= 3 else now.year
-            dt = datetime(anio, mes, dia)
-            return f"{DIAS[dt.weekday()]}, {dt.day} de {MESES[dt.month - 1]} de {dt.year}"
-    except Exception:
-        pass
-        
-    return str(texto).strip()
-
 # ╔══════════════════════════════════════════════════════════════════╗
 # ║  COMEDOR UNIVERSITARIO — Sistema de Reservas                    ║
-# ║  Versión final optimizada para producción                        ║
+# ║  Versión optimizada de alto rendimiento y arquitectura limpia   ║
 # ╚══════════════════════════════════════════════════════════════════╝
 
-# ─── Configuración de página ──────────────────────────────────────
+# ─── 1. CONFIGURACIÓN Y ESTILOS CSS ────────────────────────────────
+
 st.set_page_config(
     page_title="Comedor Universitario",
     page_icon="🍽️",
@@ -56,21 +20,20 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# ─── CSS personalizado (Diseño responsivo y ocultar devbar) ───────
 st.markdown("""
 <style>
-    /* Ocultar barra superior de desarrollo (Stop / Deploy) */
+    /* Ocultar barra superior de desarrollo */
     header[data-testid="stHeader"] {
         display: none !important;
     }
     
-    /* Contenedor principal */
+    /* Contenedor principal responsivo */
     .main .block-container {
         max-width: 720px;
         padding-top: 1rem;
     }
 
-    /* Cabecera */
+    /* Cabecera atractiva */
     .app-header {
         background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
         padding: 2rem 1.5rem;
@@ -140,56 +103,80 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# ─── INICIALIZACIÓN DE BASE DE DATOS EN MEMORIA (FALLBACK) ────────
+# ─── 2. FUNCIONES DE UTILIDAD Y NORMALIZACIÓN ─────────────────────
+
+def normalizar_nombre(texto: str) -> str:
+    """Normaliza texto removiendo acentos, espacios y convirtiendo a minúsculas."""
+    if not texto:
+        return ""
+    texto = texto.strip().lower()
+    return ''.join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
+
+
+def parsear_fecha_menu(texto: str) -> str:
+    """Formatea la fecha del menú en español (ej: Martes, 21 de Julio de 2026)."""
+    DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+    MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+    now = datetime.now()
+    
+    if not texto or not str(texto).strip():
+        return f"{DIAS[now.weekday()]}, {now.day} de {MESES[now.month - 1]} de {now.year}"
+        
+    txt = str(texto).strip().lower()
+    txt_norm = normalizar_nombre(txt)
+    
+    if txt_norm == "manana":
+        manana = now + timedelta(days=1)
+        return f"{DIAS[manana.weekday()]}, {manana.day} de {MESES[manana.month - 1]} de {manana.year}"
+    elif txt_norm == "hoy":
+        return f"{DIAS[now.weekday()]}, {now.day} de {MESES[now.month - 1]} de {now.year}"
+        
+    try:
+        partes = txt.split("/")
+        if len(partes) >= 2:
+            dia = int(partes[0])
+            mes = int(partes[1])
+            anio = int(partes[2]) if len(partes) >= 3 else now.year
+            dt = datetime(anio, mes, dia)
+            return f"{DIAS[dt.weekday()]}, {dt.day} de {MESES[dt.month - 1]} de {dt.year}"
+    except Exception:
+        pass
+        
+    return str(texto).strip()
+
+
+# ─── 3. ESTADOS INICIALES EN MEMORIA ──────────────────────────────
 
 if "db_menu" not in st.session_state:
     st.session_state.db_menu = pd.DataFrame({
-        "Codigo": [
-            "1a", "1b",          # Primeros
-            "2a", "2b",          # Segundos
-            "3a", "3b",          # Postres fijos
-            "3c", "3d",          # Postres elaborados
-            "4a", "4b", "4c",    # Acompañamientos
-            "5a", "5b",          # Ensaladas
-        ],
+        "Codigo": ["1a", "1b", "2a", "2b", "3a", "3b", "3c", "3d", "4a", "4b", "4c", "5a", "5b"],
         "Plato": [
             "Lentejas estofadas", "Crema de calabacín",
             "Pollo asado con hierbas", "Merluza a la plancha",
-            "Fruta", "Yogur",
-            "Tarta de chocolate", "Flan casero",
+            "Fruta", "Yogur", "Tarta de chocolate", "Flan casero",
             "Patatas fritas", "Arroz blanco", "Verduras salteadas",
-            "Ensalada mixta", "Ensalada César",
+            "Ensalada mixta", "Ensalada César"
         ],
-        "Stock": [
-            15, 15,
-            12, 10,
-            999, 999,
-            8, 0,
-            20, 20, 18,
-            20, 0,
-        ],
+        "Stock": [15, 15, 12, 10, 999, 999, 8, 0, 20, 20, 18, 20, 0]
     })
 
 if "db_reservas" not in st.session_state:
     st.session_state.db_reservas = []
-
 if "ultima_reserva" not in st.session_state:
     st.session_state.ultima_reserva = None
-
 if "trigger_balloons" not in st.session_state:
     st.session_state.trigger_balloons = False
-
-# Estados para el flujo de cancelación
 if "cancel_step" not in st.session_state:
     st.session_state.cancel_step = "search"
 if "cancel_reserva_data" not in st.session_state:
     st.session_state.cancel_reserva_data = None
 
 
-# ─── CONEXIÓN A GOOGLE SHEETS ─────────────────────────────────────
+# ─── 4. CAPA DE BASE DE DATOS OPTIMIZADA CON CACHÉ ─────────────────
 
+@st.cache_resource(ttl=3600, show_spinner=False)
 def get_sheets_client():
-    """Intenta conectarse a Google Sheets usando los secretos configurados."""
+    """Cachea la autenticación con Google Sheets durante 1 hora (ultra rápido)."""
     if "gcloud" in st.secrets and "private_gsheets_url" in st.secrets:
         try:
             scope = ["https://www.googleapis.com/auth/spreadsheets"]
@@ -202,11 +189,48 @@ def get_sheets_client():
     return None
 
 
+@st.cache_data(ttl=10, show_spinner=False)
+def load_menu():
+    """Cachea la lectura del menú durante 10 segundos para respuestas instantáneas."""
+    sheet = get_sheets_client()
+    if sheet:
+        try:
+            menu_ws = sheet.worksheet("Menu")
+            values = menu_ws.get_all_values()
+            if values:
+                # Extraer celda D1 si contiene fecha personalizada
+                fecha_custom = ""
+                if len(values[0]) >= 4 and values[0][3].strip():
+                    if normalizar_nombre(values[0][3]) != "fecha":
+                        fecha_custom = values[0][3].strip()
+                elif len(values) >= 2 and len(values[1]) >= 4 and values[1][3].strip():
+                    fecha_custom = values[1][3].strip()
+
+                first_cell = normalizar_nombre(str(values[0][0]))
+                rows = values[1:] if "cod" in first_cell else values
+                
+                data = []
+                for row in rows:
+                    if len(row) >= 2 and row[0].strip():
+                        codigo = row[0].strip()
+                        plato = row[1].strip() if len(row) >= 2 else ""
+                        stock_raw = row[2].strip() if len(row) >= 3 else "0"
+                        try:
+                            stock = int(stock_raw) if stock_raw.isdigit() else (999 if (plato != "" and stock_raw == "") else 0)
+                        except ValueError:
+                            stock = 999 if (plato != "" and stock_raw == "") else 0
+                        data.append({"Codigo": codigo, "Plato": plato, "Stock": stock})
+                
+                df = pd.DataFrame(data)
+                if not df.empty:
+                    return df, fecha_custom
+        except Exception:
+            pass
+    return st.session_state.db_menu, ""
+
+
 def adjust_stock(sheet, item_names, delta):
-    """
-    Modifica el stock en la hoja 'Menu' de Google Sheets.
-    delta = -1 para descontar, delta = 1 para reponer.
-    """
+    """Modifica el stock en Google Sheets y limpia el caché."""
     if not item_names:
         return
     try:
@@ -215,7 +239,6 @@ def adjust_stock(sheet, item_names, delta):
         if not records:
             return
         
-        # Detectar si la primera fila es cabecera
         first_cell = normalizar_nombre(str(records[0][0]))
         start_idx = 1 if "cod" in first_cell else 0
         
@@ -231,78 +254,30 @@ def adjust_stock(sheet, item_names, delta):
                 stock = int(row[2]) if len(row) >= 3 and row[2].strip() != "" else 0
             except ValueError:
                 stock = 999
-            name_to_row[plato] = {
-                "row": idx + 1,
-                "stock": stock
-            }
+            name_to_row[plato] = {"row": idx + 1, "stock": stock}
             
         for name in item_names:
             if not name:
                 continue
             if name in name_to_row:
                 info = name_to_row[name]
-                if info["stock"] < 999: # Evitar restar a stock ilimitado (999)
+                if info["stock"] < 999:
                     new_stock = max(0, info["stock"] + delta)
                     menu_ws.update_cell(info["row"], 3, new_stock)
+        
+        # Limpiar caché para reflejar el stock inmediatamente
+        load_menu.clear()
     except Exception as e:
         st.error(f"Error al actualizar stock: {e}")
-
-
-# ─── OPERACIONES DE BASE DE DATOS (LECTURA / ESCRITURA / CANCELAR) ──
-
-def load_menu():
-    """Carga el menú desde Google Sheets o desde la memoria local."""
-    sheet = get_sheets_client()
-    if sheet:
-        try:
-            menu_ws = sheet.worksheet("Menu")
-            values = menu_ws.get_all_values()
-            if values:
-                # Extraer celda D1 si contiene una fecha especificada
-                fecha_custom = ""
-                if len(values[0]) >= 4 and values[0][3].strip():
-                    if normalizar_nombre(values[0][3]) != "fecha":
-                        fecha_custom = values[0][3].strip()
-                elif len(values) >= 2 and len(values[1]) >= 4 and values[1][3].strip():
-                    fecha_custom = values[1][3].strip()
-                st.session_state.fecha_custom_menu = fecha_custom
-
-                first_cell = normalizar_nombre(str(values[0][0]))
-                rows = values[1:] if "cod" in first_cell else values
-                
-                # Crear DataFrame normalizando las 3 columnas por posición
-                data = []
-                for row in rows:
-                    if len(row) >= 2 and row[0].strip():
-                        codigo = row[0].strip()
-                        plato = row[1].strip() if len(row) >= 2 else ""
-                        stock_raw = row[2].strip() if len(row) >= 3 else "0"
-                        try:
-                            stock = int(stock_raw) if stock_raw.isdigit() else (999 if (plato != "" and stock_raw == "") else 0)
-                        except ValueError:
-                            stock = 999 if (plato != "" and stock_raw == "") else 0
-                        data.append({"Codigo": codigo, "Plato": plato, "Stock": stock})
-                
-                df = pd.DataFrame(data)
-                if not df.empty:
-                    st.session_state.db_menu = df
-                    return df
-        except Exception:
-            pass
-    return st.session_state.db_menu
 
 
 def save_reserva(reserva: dict):
     """Guarda la reserva y actualiza el stock."""
     sheet = get_sheets_client()
-    
     items_to_deduct = [
-        reserva["Primero"],
-        reserva["Segundo"],
-        reserva["Acomp1"],
-        reserva["Acomp2"],
-        reserva["Ensalada"],
-        reserva["Postre"]
+        reserva["Primero"], reserva["Segundo"],
+        reserva["Acomp1"], reserva["Acomp2"],
+        reserva["Ensalada"], reserva["Postre"]
     ]
     items_to_deduct = [item for item in items_to_deduct if item]
     
@@ -310,17 +285,10 @@ def save_reserva(reserva: dict):
         try:
             reservas_ws = sheet.worksheet("Reservas")
             row = [
-                reserva["Timestamp"],
-                reserva["Nombre"],
-                reserva["TipoMenu"],
-                reserva["Primero"],
-                reserva["Segundo"],
-                reserva["Acomp1"],
-                reserva["Acomp2"],
-                reserva["Ensalada"],
-                reserva["Postre"],
-                reserva["Comentarios"],
-                reserva["Estado"]
+                reserva["Timestamp"], reserva["Nombre"], reserva["TipoMenu"],
+                reserva["Primero"], reserva["Segundo"], reserva["Acomp1"],
+                reserva["Acomp2"], reserva["Ensalada"], reserva["Postre"],
+                reserva["Comentarios"], reserva["Estado"]
             ]
             reservas_ws.append_row(row)
             adjust_stock(sheet, items_to_deduct, -1)
@@ -329,7 +297,6 @@ def save_reserva(reserva: dict):
             st.error(f"Error al guardar: {e}")
             return False
     else:
-        # Modo en memoria
         st.session_state.db_reservas.append(reserva)
         for item in items_to_deduct:
             st.session_state.db_menu.loc[st.session_state.db_menu["Plato"] == item, "Stock"] = (
@@ -339,7 +306,7 @@ def save_reserva(reserva: dict):
 
 
 def find_active_reserva(nombre: str):
-    """Busca una reserva activa por nombre del cliente."""
+    """Busca una reserva activa por nombre de forma insensible a acentos/mayúsculas."""
     sheet = get_sheets_client()
     if sheet:
         try:
@@ -352,18 +319,10 @@ def find_active_reserva(nombre: str):
                     row_estado = row[10].strip()
                     if normalizar_nombre(row_nombre) == normalizar_nombre(nombre) and row_estado == "Activa":
                         return {
-                            "row_idx": idx + 1,
-                            "Timestamp": row[0],
-                            "Nombre": row[1],
-                            "TipoMenu": row[2],
-                            "Primero": row[3],
-                            "Segundo": row[4],
-                            "Acomp1": row[5],
-                            "Acomp2": row[6],
-                            "Ensalada": row[7],
-                            "Postre": row[8],
-                            "Comentarios": row[9],
-                            "Estado": row[10]
+                            "row_idx": idx + 1, "Timestamp": row[0], "Nombre": row[1],
+                            "TipoMenu": row[2], "Primero": row[3], "Segundo": row[4],
+                            "Acomp1": row[5], "Acomp2": row[6], "Ensalada": row[7],
+                            "Postre": row[8], "Comentarios": row[9], "Estado": row[10]
                         }
         except Exception:
             pass
@@ -375,16 +334,11 @@ def find_active_reserva(nombre: str):
 
 
 def cancel_reserva_by_data(reserva: dict):
-    """Cancela la reserva indicada y repone el stock correspondiente."""
+    """Cancela la reserva indicada y devuelve el stock."""
     sheet = get_sheets_client()
-    
     items_to_replenish = [
-        reserva["Primero"],
-        reserva["Segundo"],
-        reserva["Acomp1"],
-        reserva["Acomp2"],
-        reserva["Ensalada"],
-        reserva["Postre"]
+        reserva["Primero"], reserva["Segundo"], reserva["Acomp1"],
+        reserva["Acomp2"], reserva["Ensalada"], reserva["Postre"]
     ]
     items_to_replenish = [item.strip() for item in items_to_replenish if item and item.strip()]
     
@@ -398,7 +352,6 @@ def cancel_reserva_by_data(reserva: dict):
         except Exception as e:
             return False, f"Error al cancelar en la hoja: {e}"
     else:
-        # Modo en memoria
         for r in st.session_state.db_reservas:
             if r["Nombre"] == reserva["Nombre"] and r["Timestamp"] == reserva["Timestamp"] and r["Estado"] == "Activa":
                 r["Estado"] = "Cancelada"
@@ -409,9 +362,9 @@ def cancel_reserva_by_data(reserva: dict):
         return False, "No se encontró la reserva activa correspondiente."
 
 
-# ─── CARGAR MENÚ Y PREPARAR OPCIONES ──────────────────────────────
+# ─── 5. OBTENCIÓN Y FILTRADO DEL MENÚ ──────────────────────────────
 
-df_menu = load_menu()
+df_menu, fecha_custom_menu = load_menu()
 
 def get_available(df: pd.DataFrame, prefix: str) -> list[dict]:
     mask = (
@@ -438,10 +391,9 @@ todos_platos = (
 )
 
 
-# ─── CABECERA DE LA PÁGINA ────────────────────────────────────────
+# ─── 6. CABECERA DE LA PÁGINA ──────────────────────────────────────
 
-fecha_raw = st.session_state.get("fecha_custom_menu", "")
-fecha_menu_str = parsear_fecha_menu(fecha_raw)
+fecha_menu_str = parsear_fecha_menu(fecha_custom_menu)
 
 st.markdown(f"""
 <div class="app-header">
@@ -453,20 +405,18 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# Aviso de menú vacío
 if not primeros and not segundos:
     st.warning("⏳ El menú de hoy aún no está disponible o se ha agotado el stock. Vuelve más tarde.")
     st.stop()
 
 st.info("🥤 Todos los menús incluyen **bebida, ensalada y postre**  ·  Selecciona tus opciones abajo")
 
-# Globos en recarga si aplica
 if st.session_state.trigger_balloons:
     st.balloons()
     st.session_state.trigger_balloons = False
 
 
-# ─── SELECTOR DE TIPO DE MENÚ ────────────────────────────────────
+# ─── 7. VISTA REACTIVA Y FORMULARIO ────────────────────────────────
 
 st.markdown("🍴 **Tipo de Menú**")
 st.caption("💡 *Menú Entero: 1 primero + 1 segundo  ·  Medio Menú: 1 plato a elegir*")
@@ -480,10 +430,7 @@ tipo_menu = st.radio(
 if tipo_menu == "Medio Menú":
     st.markdown("**Elige 1 plato** (primero o segundo)")
     if todos_platos:
-        labels = [
-            f"🍽️ {fmt_stock(nombre_p, stock)}"
-            for cat, nombre_p, stock in todos_platos
-        ]
+        labels = [f"🍽️ {fmt_stock(nombre_p, stock)}" for cat, nombre_p, stock in todos_platos]
         plato_idx = st.radio(
             "Plato único medio menú",
             options=range(len(labels)),
@@ -498,36 +445,21 @@ else:
 
 st.divider()
 
-
-# ─── FORMULARIO DE RESERVA ────────────────────────────────────────
-
 with st.form("reserva_form", clear_on_submit=False):
 
-    # ── Nombre ──
-    nombre = st.text_input(
-        "👤 Nombre y Apellido *",
-        placeholder="Ej: María García",
-    )
+    nombre = st.text_input("👤 Nombre y Apellido *", placeholder="Ej: María García")
 
-    # ── Platos principales ──
-    st.markdown(
-        '<div class="section-label">🍲 Platos Principales</div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown('<div class="section-label">🍲 Platos Principales</div>', unsafe_allow_html=True)
 
     if tipo_menu == "Menú Entero":
         col_p, col_s = st.columns(2)
-
         with col_p:
             st.markdown("**Primer plato**")
             if primeros:
                 primero_sel = st.radio(
                     "Primer plato",
                     options=[p["Plato"] for p in primeros],
-                    format_func=lambda x: fmt_stock(
-                        x,
-                        next(p["Stock"] for p in primeros if p["Plato"] == x),
-                    ),
+                    format_func=lambda x: fmt_stock(x, next(p["Stock"] for p in primeros if p["Plato"] == x)),
                     label_visibility="collapsed",
                 )
             else:
@@ -540,20 +472,14 @@ with st.form("reserva_form", clear_on_submit=False):
                 segundo_sel = st.radio(
                     "Segundo plato",
                     options=[s["Plato"] for s in segundos],
-                    format_func=lambda x: fmt_stock(
-                        x,
-                        next(s["Stock"] for s in segundos if s["Plato"] == x),
-                    ),
+                    format_func=lambda x: fmt_stock(x, next(s["Stock"] for s in segundos if s["Plato"] == x)),
                     label_visibility="collapsed",
                 )
             else:
                 st.error("No hay segundos disponibles")
                 segundo_sel = None
-
         plato_unico = None
-
     else:
-        # Medio Menú (Seleccionado arriba fuera del form para ser reactivo)
         plato_unico = plato_medio_sel
         primero_sel = None
         segundo_sel = None
@@ -574,10 +500,7 @@ with st.form("reserva_form", clear_on_submit=False):
             "Elige tus guarniciones",
             options=[a["Plato"] for a in acomps],
             placeholder="Selecciona hasta 2 acompañamientos",
-            format_func=lambda x: fmt_stock(
-                x,
-                next(a["Stock"] for a in acomps if a["Plato"] == x),
-            ),
+            format_func=lambda x: fmt_stock(x, next(a["Stock"] for a in acomps if a["Plato"] == x)),
             label_visibility="collapsed",
         )
     else:
@@ -585,19 +508,14 @@ with st.form("reserva_form", clear_on_submit=False):
         acomp_sel = []
 
     # ── Ensalada ──
-    st.markdown(
-        '<div class="section-label">🥬 Ensalada</div>',
-        unsafe_allow_html=True,
-    )
-
+    st.markdown('<div class="section-label">🥬 Ensalada</div>', unsafe_allow_html=True)
     if ensaladas:
         ensalada_opts = [e["Plato"] for e in ensaladas] + ["Sin ensalada"]
         ensalada_sel_raw = st.radio(
             "Elige tu ensalada",
             options=ensalada_opts,
             format_func=lambda x: "🚫 Sin ensalada" if x == "Sin ensalada" else fmt_stock(
-                x,
-                next((e["Stock"] for e in ensaladas if e["Plato"] == x), 999),
+                x, next((e["Stock"] for e in ensaladas if e["Plato"] == x), 999)
             ),
             label_visibility="collapsed",
         )
@@ -607,44 +525,32 @@ with st.form("reserva_form", clear_on_submit=False):
         ensalada_sel = None
 
     # ── Postre ──
-    st.markdown(
-        '<div class="section-label">🍰 Postre</div>',
-        unsafe_allow_html=True,
-    )
-
+    st.markdown('<div class="section-label">🍰 Postre</div>', unsafe_allow_html=True)
     if postres:
         postre_sel = st.radio(
             "Elige tu postre",
             options=[p["Plato"] for p in postres],
-            format_func=lambda x: fmt_stock(
-                x,
-                next(p["Stock"] for p in postres if p["Plato"] == x),
-            ),
+            format_func=lambda x: fmt_stock(x, next(p["Stock"] for p in postres if p["Plato"] == x)),
             label_visibility="collapsed",
         )
     else:
-        st.warning("No hay postres disponibles")
+        st.warning("No hay postre disponible en este momento")
         postre_sel = None
 
-    st.divider()
-
     # ── Comentarios ──
+    st.markdown('<div class="section-label">💬 Observaciones o Alergias (opcional)</div>', unsafe_allow_html=True)
     comentarios = st.text_area(
-        "💬 Comentarios (opcional)",
-        placeholder="Ej: Llegaré a las 15:30, sin gluten, etc.",
-        max_chars=200,
+        "Observaciones",
+        placeholder="Ej: Sin sal, alergia a frutos secos...",
+        label_visibility="collapsed",
+        height=80,
     )
 
-    # ── Botón enviar ──
     st.markdown("")
-    submitted = st.form_submit_button(
-        "✅ Enviar Reserva",
-        use_container_width=True,
-        type="primary",
-    )
+    submitted = st.form_submit_button("✅ Enviar Reserva", use_container_width=True, type="primary")
 
 
-# ─── PROCESAR ENVÍO ──────────────────────────────────────────────
+# ─── 8. PROCESAR ENVÍO ────────────────────────────────────────────
 
 if submitted:
     if not nombre or not nombre.strip():
@@ -656,7 +562,6 @@ if submitted:
     elif len(acomp_sel) > 2:
         st.error("⚠️ Solo puedes elegir un máximo de 2 acompañamientos. Desmarca alguno.")
     else:
-        # Protección anti-doble clic (menos de 6 segundos con el mismo nombre)
         ahora_ts = time.time()
         ultimo_ts = st.session_state.get("last_submit_ts", 0)
         ultimo_nom = st.session_state.get("last_submit_nom", "")
@@ -667,7 +572,6 @@ if submitted:
             st.session_state.last_submit_ts = ahora_ts
             st.session_state.last_submit_nom = nombre
 
-            # Barra de progreso visual, simpática y atractiva
             progress_bar = st.progress(0, text="👨‍🍳 Conectando con la cocina...")
             steps = [
                 (25, "🥗 Verificando disponibilidad y cubiertos..."),
@@ -679,7 +583,6 @@ if submitted:
                 time.sleep(0.12)
                 progress_bar.progress(pct, text=txt)
 
-            # Construir registro
             if tipo_menu == "Menú Entero":
                 primero_final = primero_sel
                 segundo_final = segundo_sel
@@ -711,7 +614,7 @@ if submitted:
             else:
                 st.error("❌ Error al guardar la reserva. Inténtalo de nuevo.")
 
-# Mostrar última reserva confirmada si existe (abajo del formulario)
+# Resumen de última reserva confirmada
 if st.session_state.ultima_reserva:
     ur = st.session_state.ultima_reserva
     st.markdown(f"""
@@ -741,84 +644,77 @@ if st.session_state.ultima_reserva:
             st.markdown("**Bebida:** Incluida")
         st.caption(f"Registrado el {ur['Timestamp']}. Si necesitas cambiarla, puedes cancelarla abajo.")
 
-
-# ─── SECCIÓN DE VER / CANCELAR RESERVA ─────────────────────────────
-
 st.divider()
-with st.expander("🔍 Ver / Cancelar reserva"):
-    if st.session_state.cancel_step == "search":
-        st.markdown("Introduce tu **nombre y apellido** para ver o cancelar tu reserva activa.")
-        nombre_cancel = st.text_input(
-            "Nombre y Apellido",
-            key="cancel_name_input",
-            placeholder="Ej: María García",
-        )
-        if st.button("🔍 Buscar reserva", use_container_width=True):
-            if nombre_cancel and nombre_cancel.strip():
-                reserva = find_active_reserva(nombre_cancel.strip())
-                if reserva:
-                    st.session_state.cancel_reserva_data = reserva
-                    st.session_state.cancel_step = "confirm"
-                    st.rerun()
-                else:
-                    st.warning(f"No se encontró ninguna reserva activa para '{nombre_cancel.strip()}'.")
-            else:
-                st.error("Por favor, escribe tu nombre.")
-                
-    elif st.session_state.cancel_step == "confirm":
-        res = st.session_state.cancel_reserva_data
-        st.warning("⚠️ Se encontró la siguiente reserva activa:")
-        
-        # Mostrar detalles de forma amigable
-        st.markdown(f"""
-        *   **Cliente:** {res['Nombre']}
-        *   **Tipo de Menú:** {res['TipoMenu']}
-        """)
-        if res.get('Primero'):
-            st.markdown(f"*   **Primer plato:** {res['Primero']}")
-        if res.get('Segundo'):
-            st.markdown(f"*   **Segundo plato:** {res['Segundo']}")
-            
-        acomp_list = []
-        if res.get('Acomp1'): acomp_list.append(res['Acomp1'])
-        if res.get('Acomp2'): acomp_list.append(res['Acomp2'])
-        if acomp_list:
-            st.markdown(f"*   **Acompañamientos:** {', '.join(acomp_list)}")
-            
-        if res.get('Ensalada'):
-            st.markdown(f"*   **Ensalada:** {res['Ensalada']}")
-        if res.get('Postre'):
-            st.markdown(f"*   **Postre:** {res['Postre']}")
-        if res.get('Comentarios'):
-            st.markdown(f"*   **Comentarios:** {res['Comentarios']}")
-            
-        st.markdown("---")
-        
-        # Botones de acción
+
+
+# ─── 9. SECCIÓN VER / CANCELAR RESERVA ─────────────────────────────
+
+st.subheader("🔍 Ver / Cancelar reserva")
+
+cancel_col1, cancel_col2 = st.columns([3, 1])
+
+with cancel_col1:
+    search_nombre = st.text_input(
+        "Introduce tu Nombre y Apellido para buscar tu reserva:",
+        placeholder="Ej: María García",
+        key="search_cancel_input"
+    )
+
+with cancel_col2:
+    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+    buscar_btn = st.button("🔍 Buscar", use_container_width=True)
+
+if buscar_btn and search_nombre:
+    found = find_active_reserva(search_nombre)
+    if found:
+        st.session_state.cancel_reserva_data = found
+        st.session_state.cancel_step = "confirm"
+    else:
+        st.session_state.cancel_reserva_data = None
+        st.session_state.cancel_step = "search"
+        st.error(f"❌ No se encontró ninguna reserva activa a nombre de **{search_nombre}**.")
+
+if st.session_state.cancel_step == "confirm" and st.session_state.cancel_reserva_data:
+    r_data = st.session_state.cancel_reserva_data
+    
+    st.info(f"📋 **Reserva encontrada a nombre de:** {r_data['Nombre']}")
+    
+    with st.expander("📄 Ver lo que reservaste", expanded=True):
         col_c1, col_c2 = st.columns(2)
         with col_c1:
-            if st.button("Cancelar reserva", use_container_width=True, type="primary"):
-                exito, msg = cancel_reserva_by_data(res)
-                if exito:
-                    st.success(msg)
-                    # Si la reserva cancelada es la que está visible, la limpiamos
-                    if st.session_state.ultima_reserva and normalizar_nombre(st.session_state.ultima_reserva["Nombre"]) == normalizar_nombre(res["Nombre"]):
-                        st.session_state.ultima_reserva = None
-                    st.session_state.cancel_step = "search"
-                    st.session_state.cancel_reserva_data = None
-                    st.rerun()
-                else:
-                    st.error(msg)
+            st.write(f"**Tipo de menú:** {r_data['TipoMenu']}")
+            if r_data['Primero']: st.write(f"**Primero:** {r_data['Primero']}")
+            if r_data['Segundo']: st.write(f"**Segundo:** {r_data['Segundo']}")
+            acomp_list = [r_data[a] for a in ['Acomp1', 'Acomp2'] if r_data.get(a)]
+            if acomp_list: st.write(f"**Acompañamientos:** {', '.join(acomp_list)}")
         with col_c2:
-            if st.button("Volver sin cancelar", use_container_width=True):
+            if r_data['Ensalada']: st.write(f"**Ensalada:** {r_data['Ensalada']}")
+            if r_data['Postre']: st.write(f"**Postre:** {r_data['Postre']}")
+            st.write(f"**Fecha reserva:** {r_data['Timestamp']}")
+            
+    col_btn1, col_btn2 = st.columns(2)
+    with col_btn1:
+        if st.button("🗑️ Cancelar reserva", type="primary", use_container_width=True):
+            ok, msg = cancel_reserva_by_data(r_data)
+            if ok:
                 st.session_state.cancel_step = "search"
                 st.session_state.cancel_reserva_data = None
+                if st.session_state.ultima_reserva and st.session_state.ultima_reserva.get('Nombre') == r_data['Nombre']:
+                    st.session_state.ultima_reserva = None
+                st.success(msg)
+                time.sleep(1.5)
                 st.rerun()
+            else:
+                st.error(msg)
+                
+    with col_btn2:
+        if st.button("↩️ Volver sin cancelar", use_container_width=True):
+            st.session_state.cancel_step = "search"
+            st.session_state.cancel_reserva_data = None
+            st.rerun()
 
-
-# ─── PIE DE PÁGINA ───────────────────────────────────────────────
-
-st.markdown(
-    '<div class="app-footer">🍽️ Comedor Universitario · Sistema de Reservas</div>',
-    unsafe_allow_html=True,
-)
+st.markdown("""
+<div class="app-footer">
+    Comedor Universitario • Desarrollado con Streamlit
+</div>
+""", unsafe_allow_html=True)
