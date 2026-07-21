@@ -38,21 +38,28 @@ st.markdown("""
         background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
         padding: 2rem 1.5rem;
         border-radius: 16px;
-        text-align: center;
+        text-align: center !important;
         margin-bottom: 1.5rem;
         color: white;
         box-shadow: 0 4px 24px rgba(99, 102, 241, 0.3);
+        width: 100%;
+        box-sizing: border-box;
+        display: block;
     }
     .app-header h1 {
         margin: 0;
         font-size: 1.8rem;
         font-weight: 700;
         letter-spacing: -0.02em;
+        text-align: center !important;
+        width: 100%;
     }
     .app-header p {
         margin: 0.4rem 0 0 0;
         opacity: 0.9;
         font-size: 1rem;
+        text-align: center !important;
+        width: 100%;
     }
 
     /* Secciones del formulario */
