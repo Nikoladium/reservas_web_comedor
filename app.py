@@ -403,18 +403,22 @@ todos_platos = (
 fecha_menu_str = parsear_fecha_menu(fecha_custom_menu)
 
 st.markdown(f"""
-<div class="app-header" style="text-align: center;">
-    <h1 style="font-size: 1.9rem; margin: 0; font-weight: 800; letter-spacing: 0.02em; text-align: center;">
-        🍴 MENÚ DEL DÍA 🔪
-    </h1>
-    <p style="font-size: 1.05rem; margin: 0.6rem 0 0.25rem 0; font-weight: 600; text-align: center;">
-        📅 Día: {fecha_menu_str}
-    </p>
-    <p style="font-size: 1.05rem; margin: 0; font-weight: 600; text-align: center;">
-        Reserva Ya ✅
-    </p>
-</div>
-<div style="margin-bottom: 1.5rem;"></div>""", unsafe_allow_html=True)
+<div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+            padding: 2rem 1.5rem; border-radius: 16px; margin-bottom: 1.5rem;
+            color: white; box-shadow: 0 4px 24px rgba(99,102,241,0.3);
+            width: 100%; box-sizing: border-box;">
+    <div style="text-align: center; width: 100%;">
+        <div style="font-size: 1.9rem; font-weight: 800; letter-spacing: 0.02em; margin: 0;">
+            MENÚ DEL DÍA
+        </div>
+        <div style="font-size: 1.05rem; font-weight: 600; margin: 0.6rem 0 0.25rem 0;">
+            📅 Día: {fecha_menu_str}
+        </div>
+        <div style="font-size: 1.05rem; font-weight: 600; margin: 0;">
+            Reserva Ya ✅
+        </div>
+    </div>
+</div>""", unsafe_allow_html=True)
 
 if not primeros and not segundos:
     st.warning("⏳ El menú de hoy aún no está disponible o se ha agotado el stock. Vuelve más tarde.")
