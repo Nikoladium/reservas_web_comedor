@@ -411,7 +411,7 @@ st.markdown(f"""
         <div style="font-size: 1.9rem; font-weight: 800; letter-spacing: 0.02em; margin: 0;">
             MENÚ DEL DÍA
         </div>
-        <div style="font-size: 1.05rem; font-weight: 600; margin: 0.6rem 0 0.25rem 0;">
+        <div style="font-size: 1.25rem; font-weight: 600; margin: 0.6rem 0 0.25rem 0;">
             📅 {fecha_menu_str}
         </div>
         <div style="font-size: 1.05rem; font-weight: 600; margin: 0;">
