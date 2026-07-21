@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import gspread
 from google.oauth2.service_account import Credentials
 import unicodedata
@@ -11,6 +11,36 @@ def normalizar_nombre(texto: str) -> str:
     # Convertir a minúsculas y quitar acentos y espacios
     texto = texto.strip().lower()
     return ''.join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
+
+def parsear_fecha_menu(texto: str) -> str:
+    DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+    MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+    now = datetime.now()
+    
+    if not texto or not str(texto).strip():
+        return f"{DIAS[now.weekday()]}, {now.day} de {MESES[now.month - 1]} de {now.year}"
+        
+    txt = str(texto).strip().lower()
+    txt_norm = normalizar_nombre(txt)
+    
+    if txt_norm == "manana":
+        manana = now + timedelta(days=1)
+        return f"{DIAS[manana.weekday()]}, {manana.day} de {MESES[manana.month - 1]} de {manana.year}"
+    elif txt_norm == "hoy":
+        return f"{DIAS[now.weekday()]}, {now.day} de {MESES[now.month - 1]} de {now.year}"
+        
+    try:
+        partes = txt.split("/")
+        if len(partes) >= 2:
+            dia = int(partes[0])
+            mes = int(partes[1])
+            anio = int(partes[2]) if len(partes) >= 3 else now.year
+            dt = datetime(anio, mes, dia)
+            return f"{DIAS[dt.weekday()]}, {dt.day} de {MESES[dt.month - 1]} de {dt.year}"
+    except Exception:
+        pass
+        
+    return str(texto).strip()
 
 # ╔══════════════════════════════════════════════════════════════════╗
 # ║  COMEDOR UNIVERSITARIO — Sistema de Reservas                    ║
@@ -227,6 +257,15 @@ def load_menu():
             menu_ws = sheet.worksheet("Menu")
             values = menu_ws.get_all_values()
             if values:
+                # Extraer celda D1 si contiene una fecha especificada
+                fecha_custom = ""
+                if len(values[0]) >= 4 and values[0][3].strip():
+                    if normalizar_nombre(values[0][3]) != "fecha":
+                        fecha_custom = values[0][3].strip()
+                elif len(values) >= 2 and len(values[1]) >= 4 and values[1][3].strip():
+                    fecha_custom = values[1][3].strip()
+                st.session_state.fecha_custom_menu = fecha_custom
+
                 first_cell = normalizar_nombre(str(values[0][0]))
                 rows = values[1:] if "cod" in first_cell else values
                 
@@ -400,17 +439,15 @@ todos_platos = (
 
 # ─── CABECERA DE LA PÁGINA ────────────────────────────────────────
 
-DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
-MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-now = datetime.now()
-fecha_hoy_str = f"{DIAS[now.weekday()]}, {now.day} de {MESES[now.month - 1]} de {now.year}"
+fecha_raw = st.session_state.get("fecha_custom_menu", "")
+fecha_menu_str = parsear_fecha_menu(fecha_raw)
 
 st.markdown(f"""
 <div class="app-header">
     <h1>🍽️ Comedor Universitario</h1>
     <p>Reserva tu menú del día</p>
     <div style="margin-top: 0.8rem; background: rgba(255, 255, 255, 0.22); display: inline-block; padding: 0.35rem 1.1rem; border-radius: 20px; font-size: 0.9rem; font-weight: 600; letter-spacing: 0.01em;">
-        📅 Menú del día: {fecha_hoy_str}
+        📅 Menú del día: {fecha_menu_str}
     </div>
 </div>
 """, unsafe_allow_html=True)
