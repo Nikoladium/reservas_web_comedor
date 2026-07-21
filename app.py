@@ -396,15 +396,15 @@ todos_platos = (
 fecha_menu_str = parsear_fecha_menu(fecha_custom_menu)
 
 st.markdown(f"""
-<div class="app-header">
-    <h1 style="font-size: 1.9rem; margin: 0; font-weight: 800; letter-spacing: 0.02em; display: flex; align-items: center; justify-content: center; gap: 10px;">
-        <span>🍴</span> MENÚ DEL DÍA <span>🔪</span>
+<div class="app-header" style="text-align: center;">
+    <h1 style="font-size: 1.9rem; margin: 0; font-weight: 800; letter-spacing: 0.02em; text-align: center;">
+        🍴 MENÚ DEL DÍA 🔪
     </h1>
-    <p style="font-size: 1.05rem; margin: 0.6rem 0 0.25rem 0; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px;">
-        <span>📅</span> Día: {fecha_menu_str}
+    <p style="font-size: 1.05rem; margin: 0.6rem 0 0.25rem 0; font-weight: 600; text-align: center;">
+        📅 Día: {fecha_menu_str}
     </p>
-    <p style="font-size: 1.05rem; margin: 0; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px;">
-        Reserva Ya <span>✅</span>
+    <p style="font-size: 1.05rem; margin: 0; font-weight: 600; text-align: center;">
+        Reserva Ya ✅
     </p>
 </div>
 <div style="margin-bottom: 1.5rem;"></div>""", unsafe_allow_html=True)
