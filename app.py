@@ -238,9 +238,9 @@ def load_menu():
                         plato = row[1].strip() if len(row) >= 2 else ""
                         stock_raw = row[2].strip() if len(row) >= 3 else "0"
                         try:
-                            stock = int(stock_raw)
+                            stock = int(stock_raw) if stock_raw.isdigit() else (999 if (plato != "" and stock_raw == "") else 0)
                         except ValueError:
-                            stock = 999 if stock_raw == "" else 0
+                            stock = 999 if (plato != "" and stock_raw == "") else 0
                         data.append({"Codigo": codigo, "Plato": plato, "Stock": stock})
                 
                 df = pd.DataFrame(data)
@@ -374,7 +374,11 @@ def cancel_reserva_by_data(reserva: dict):
 df_menu = load_menu()
 
 def get_available(df: pd.DataFrame, prefix: str) -> list[dict]:
-    mask = df["Codigo"].str.startswith(prefix) & (df["Stock"] > 0)
+    mask = (
+        df["Codigo"].astype(str).str.startswith(prefix)
+        & (df["Stock"] > 0)
+        & (df["Plato"].astype(str).str.strip() != "")
+    )
     return df[mask].to_dict("records")
 
 def fmt_stock(nombre: str, stock: int) -> str:
