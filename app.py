@@ -412,7 +412,7 @@ st.markdown(f"""
             MENÚ DEL DÍA
         </div>
         <div style="font-size: 1.05rem; font-weight: 600; margin: 0.6rem 0 0.25rem 0;">
-            📅 Día: {fecha_menu_str}
+            📅 {fecha_menu_str}
         </div>
         <div style="font-size: 1.05rem; font-weight: 600; margin: 0;">
             ✅ Reserva Ya
