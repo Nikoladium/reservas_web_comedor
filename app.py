@@ -218,9 +218,23 @@ def load_menu():
             menu_ws = sheet.worksheet("Menu")
             records = menu_ws.get_all_records()
             df = pd.DataFrame(records)
-            if not df.empty and all(col in df.columns for col in ["Codigo", "Plato", "Stock"]):
-                st.session_state.db_menu = df
-                return df
+            if not df.empty:
+                # Normalizar nombres de columnas (tolerancia a 'Código', 'codigo', 'stock ', etc.)
+                col_map = {}
+                for col in df.columns:
+                    col_norm = normalizar_nombre(str(col))
+                    if col_norm == "codigo":
+                        col_map[col] = "Codigo"
+                    elif col_norm == "plato":
+                        col_map[col] = "Plato"
+                    elif col_norm == "stock":
+                        col_map[col] = "Stock"
+                df = df.rename(columns=col_map)
+
+                if all(col in df.columns for col in ["Codigo", "Plato", "Stock"]):
+                    df["Stock"] = pd.to_numeric(df["Stock"], errors="coerce").fillna(0).astype(int)
+                    st.session_state.db_menu = df
+                    return df
         except Exception:
             pass
     return st.session_state.db_menu
