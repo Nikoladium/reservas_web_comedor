@@ -476,6 +476,25 @@ tipo_menu = st.radio(
     label_visibility="collapsed",
 )
 
+if tipo_menu == "Medio Menú":
+    st.markdown("**Elige 1 plato** (primero o segundo)")
+    if todos_platos:
+        labels = [
+            f"🍽️ {fmt_stock(nombre_p, stock)}"
+            for cat, nombre_p, stock in todos_platos
+        ]
+        plato_idx = st.radio(
+            "Plato único medio menú",
+            options=range(len(labels)),
+            format_func=lambda i: labels[i],
+            label_visibility="collapsed",
+        )
+        plato_medio_sel = todos_platos[plato_idx]
+    else:
+        plato_medio_sel = None
+else:
+    plato_medio_sel = None
+
 st.divider()
 
 
@@ -533,34 +552,23 @@ with st.form("reserva_form", clear_on_submit=False):
         plato_unico = None
 
     else:
-        # Medio Menú
-        st.markdown("**Elige 1 plato** (primero o segundo)")
-        if todos_platos:
-            labels = [
-                f"🍽️ {fmt_stock(nombre_p, stock)}"
-                for cat, nombre_p, stock in todos_platos
-            ]
-            plato_idx = st.radio(
-                "Plato único",
-                options=range(len(labels)),
-                format_func=lambda i: labels[i],
-                label_visibility="collapsed",
-            )
-            plato_unico = todos_platos[plato_idx]
-        else:
-            st.error("No hay platos disponibles")
-            plato_unico = None
-
+        # Medio Menú (Seleccionado arriba fuera del form para ser reactivo)
+        plato_unico = plato_medio_sel
         primero_sel = None
         segundo_sel = None
 
     # ── Acompañamientos ──
+    es_primer_plato_medio = (tipo_menu == "Medio Menú" and plato_unico and plato_unico[0] == "Primero")
+
     st.markdown(
         '<div class="section-label">🥗 Acompañamientos <span style="font-weight:400; color:#6b7280;">(máximo 2)</span></div>',
         unsafe_allow_html=True,
     )
 
-    if acomps:
+    if es_primer_plato_medio:
+        st.info("ℹ️ El primer plato no incluye acompañamiento.")
+        acomp_sel = []
+    elif acomps:
         acomp_sel = st.multiselect(
             "Elige tus guarniciones",
             options=[a["Plato"] for a in acomps],
@@ -582,15 +590,17 @@ with st.form("reserva_form", clear_on_submit=False):
     )
 
     if ensaladas:
-        ensalada_sel = st.radio(
+        ensalada_opts = [e["Plato"] for e in ensaladas] + ["Sin ensalada"]
+        ensalada_sel_raw = st.radio(
             "Elige tu ensalada",
-            options=[e["Plato"] for e in ensaladas],
-            format_func=lambda x: fmt_stock(
+            options=ensalada_opts,
+            format_func=lambda x: "🚫 Sin ensalada" if x == "Sin ensalada" else fmt_stock(
                 x,
-                next(e["Stock"] for e in ensaladas if e["Plato"] == x),
+                next((e["Stock"] for e in ensaladas if e["Plato"] == x), 999),
             ),
             label_visibility="collapsed",
         )
+        ensalada_sel = "" if ensalada_sel_raw == "Sin ensalada" else ensalada_sel_raw
     else:
         st.warning("No hay ensalada disponible en este momento")
         ensalada_sel = None
@@ -699,7 +709,10 @@ if st.session_state.ultima_reserva:
             if ur.get('Acomp2'): acomp_u.append(ur['Acomp2'])
             if acomp_u: st.markdown(f"**Acomp.:** {', '.join(acomp_u)}")
         with col_ur2:
-            if ur.get('Ensalada'): st.markdown(f"**Ensalada:** {ur['Ensalada']}")
+            if ur.get('Ensalada'):
+                st.markdown(f"**Ensalada:** {ur['Ensalada']}")
+            else:
+                st.markdown("**Ensalada:** Sin ensalada")
             if ur.get('Postre'): st.markdown(f"**Postre:** {ur['Postre']}")
             st.markdown("**Bebida:** Incluida")
         st.caption(f"Registrado el {ur['Timestamp']}. Si necesitas cambiarla, puedes cancelarla abajo.")
