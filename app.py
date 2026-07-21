@@ -180,15 +180,24 @@ def adjust_stock(sheet, item_names, delta):
         return
     try:
         menu_ws = sheet.worksheet("Menu")
-        records = menu_ws.get_all_values() # Incluye cabecera
+        records = menu_ws.get_all_values()
+        if not records:
+            return
+        
+        # Detectar si la primera fila es cabecera
+        first_cell = normalizar_nombre(str(records[0][0]))
+        start_idx = 1 if "cod" in first_cell else 0
         
         name_to_row = {}
-        for idx, row in enumerate(records):
-            if idx == 0 or len(row) < 3:
+        for idx in range(start_idx, len(records)):
+            row = records[idx]
+            if len(row) < 2:
                 continue
             plato = row[1].strip()
+            if not plato:
+                continue
             try:
-                stock = int(row[2])
+                stock = int(row[2]) if len(row) >= 3 and row[2].strip() != "" else 0
             except ValueError:
                 stock = 999
             name_to_row[plato] = {
@@ -216,23 +225,26 @@ def load_menu():
     if sheet:
         try:
             menu_ws = sheet.worksheet("Menu")
-            records = menu_ws.get_all_records()
-            df = pd.DataFrame(records)
-            if not df.empty:
-                # Normalizar nombres de columnas (tolerancia a 'Código', 'codigo', 'stock ', etc.)
-                col_map = {}
-                for col in df.columns:
-                    col_norm = normalizar_nombre(str(col))
-                    if col_norm == "codigo":
-                        col_map[col] = "Codigo"
-                    elif col_norm == "plato":
-                        col_map[col] = "Plato"
-                    elif col_norm == "stock":
-                        col_map[col] = "Stock"
-                df = df.rename(columns=col_map)
-
-                if all(col in df.columns for col in ["Codigo", "Plato", "Stock"]):
-                    df["Stock"] = pd.to_numeric(df["Stock"], errors="coerce").fillna(0).astype(int)
+            values = menu_ws.get_all_values()
+            if values:
+                first_cell = normalizar_nombre(str(values[0][0]))
+                rows = values[1:] if "cod" in first_cell else values
+                
+                # Crear DataFrame normalizando las 3 columnas por posición
+                data = []
+                for row in rows:
+                    if len(row) >= 2 and row[0].strip():
+                        codigo = row[0].strip()
+                        plato = row[1].strip() if len(row) >= 2 else ""
+                        stock_raw = row[2].strip() if len(row) >= 3 else "0"
+                        try:
+                            stock = int(stock_raw)
+                        except ValueError:
+                            stock = 999 if stock_raw == "" else 0
+                        data.append({"Codigo": codigo, "Plato": plato, "Stock": stock})
+                
+                df = pd.DataFrame(data)
+                if not df.empty:
                     st.session_state.db_menu = df
                     return df
         except Exception:
