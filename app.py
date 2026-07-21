@@ -114,22 +114,20 @@ def normalizar_nombre(texto: str) -> str:
 
 
 def parsear_fecha_menu(texto: str) -> str:
-    """Formatea la fecha del menú en español (ej: Martes, 21 de Julio de 2026)."""
-    DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
-    MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+    """Formatea la fecha del menú en formato corto español (ej: 21/07/2026)."""
     now = datetime.now()
     
     if not texto or not str(texto).strip():
-        return f"{DIAS[now.weekday()]}, {now.day} de {MESES[now.month - 1]} de {now.year}"
+        return now.strftime("%d/%m/%Y")
         
     txt = str(texto).strip().lower()
     txt_norm = normalizar_nombre(txt)
     
     if txt_norm == "manana":
         manana = now + timedelta(days=1)
-        return f"{DIAS[manana.weekday()]}, {manana.day} de {MESES[manana.month - 1]} de {manana.year}"
+        return manana.strftime("%d/%m/%Y")
     elif txt_norm == "hoy":
-        return f"{DIAS[now.weekday()]}, {now.day} de {MESES[now.month - 1]} de {now.year}"
+        return now.strftime("%d/%m/%Y")
         
     try:
         partes = txt.split("/")
@@ -138,7 +136,7 @@ def parsear_fecha_menu(texto: str) -> str:
             mes = int(partes[1])
             anio = int(partes[2]) if len(partes) >= 3 else now.year
             dt = datetime(anio, mes, dia)
-            return f"{DIAS[dt.weekday()]}, {dt.day} de {MESES[dt.month - 1]} de {dt.year}"
+            return dt.strftime("%d/%m/%Y")
     except Exception:
         pass
         
@@ -399,13 +397,17 @@ fecha_menu_str = parsear_fecha_menu(fecha_custom_menu)
 
 st.markdown(f"""
 <div class="app-header">
-    <h1>🍽️ Comedor Universitario</h1>
-    <p>Reserva tu menú del día</p>
-    <div style="margin-top: 0.8rem; background: rgba(255, 255, 255, 0.22); display: inline-block; padding: 0.35rem 1.1rem; border-radius: 20px; font-size: 0.9rem; font-weight: 600; letter-spacing: 0.01em;">
-        📅 Menú del día: {fecha_menu_str}
-    </div>
+    <h1 style="font-size: 1.9rem; margin: 0; font-weight: 800; letter-spacing: 0.02em; display: flex; align-items: center; justify-content: center; gap: 10px;">
+        <span>🍴</span> MENÚ DEL DÍA <span>🔪</span>
+    </h1>
+    <p style="font-size: 1.05rem; margin: 0.6rem 0 0.25rem 0; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px;">
+        <span>📅</span> Día: {fecha_menu_str}
+    </p>
+    <p style="font-size: 1.05rem; margin: 0; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px;">
+        Reserva Ya <span>✅</span>
+    </p>
 </div>
-""", unsafe_allow_html=True)
+<div style="margin-bottom: 1.5rem;"></div>""", unsafe_allow_html=True)
 
 if not primeros and not segundos:
     st.warning("⏳ El menú de hoy aún no está disponible o se ha agotado el stock. Vuelve más tarde.")
