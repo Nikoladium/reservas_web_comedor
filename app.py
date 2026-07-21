@@ -415,7 +415,7 @@ st.markdown(f"""
             📅 Día: {fecha_menu_str}
         </div>
         <div style="font-size: 1.05rem; font-weight: 600; margin: 0;">
-            Reserva Ya ✅
+            ✅ Reserva Ya
         </div>
     </div>
 </div>""", unsafe_allow_html=True)
