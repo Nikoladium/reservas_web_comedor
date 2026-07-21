@@ -596,7 +596,7 @@ if submitted:
             reserva = {
                 "Timestamp": datetime.now().strftime("%d/%m/%Y %H:%M"),
                 "Nombre": nombre.strip(),
-                "TipoMenu": tipo_menu,
+                "TipoMenu": "1" if tipo_menu == "Menú Entero" else "1/2",
                 "Primero": primero_final,
                 "Segundo": segundo_final,
                 "Acomp1": acomp_sel[0] if len(acomp_sel) >= 1 else "",
