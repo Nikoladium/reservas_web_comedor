@@ -288,7 +288,9 @@ def save_reserva(reserva: dict):
                 reserva["Timestamp"], reserva["Nombre"], reserva["TipoMenu"],
                 reserva["Primero"], reserva["Segundo"], reserva["Acomp1"],
                 reserva["Acomp2"], reserva["Ensalada"], reserva["Postre"],
-                reserva["Comentarios"], reserva["Estado"]
+                reserva["Comentarios"],
+                "Activa",       # Columna K: Estado (Activa/Cancelada)
+                "Pendiente"     # Columna L: Entrega (Pendiente/Entregado)
             ]
             reservas_ws.append_row(row)
             adjust_stock(sheet, items_to_deduct, -1)
@@ -317,7 +319,7 @@ def find_active_reserva(nombre: str):
                 if len(row) >= 11:
                     row_nombre = row[1].strip()
                     row_estado = row[10].strip()
-                    if normalizar_nombre(row_nombre) == normalizar_nombre(nombre) and row_estado == "Pendiente":
+                    if normalizar_nombre(row_nombre) == normalizar_nombre(nombre) and row_estado == "Activa":
                         return {
                             "row_idx": idx + 1, "Timestamp": row[0], "Nombre": row[1],
                             "TipoMenu": row[2], "Primero": row[3], "Segundo": row[4],
@@ -328,7 +330,7 @@ def find_active_reserva(nombre: str):
             pass
     else:
         for r in reversed(st.session_state.db_reservas):
-            if normalizar_nombre(r["Nombre"]) == normalizar_nombre(nombre) and r["Estado"] == "Pendiente":
+            if normalizar_nombre(r["Nombre"]) == normalizar_nombre(nombre) and r["Estado"] == "Activa":
                 return r
     return None
 
@@ -353,7 +355,7 @@ def cancel_reserva_by_data(reserva: dict):
             return False, f"Error al cancelar en la hoja: {e}"
     else:
         for r in st.session_state.db_reservas:
-            if r["Nombre"] == reserva["Nombre"] and r["Timestamp"] == reserva["Timestamp"] and r["Estado"] == "Pendiente":
+            if r["Nombre"] == reserva["Nombre"] and r["Timestamp"] == reserva["Timestamp"] and r["Estado"] == "Activa":
                 r["Estado"] = "Cancelada"
                 for item in items_to_replenish:
                     if item:
@@ -602,7 +604,7 @@ if submitted:
                 "Ensalada": ensalada_sel or "",
                 "Postre": postre_sel or "",
                 "Comentarios": comentarios.strip() if comentarios else "",
-                "Estado": "Pendiente",
+                "Estado": "Activa",
             }
 
             ok = save_reserva(reserva)
