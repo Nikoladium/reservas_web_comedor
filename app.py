@@ -400,10 +400,18 @@ todos_platos = (
 
 # ─── CABECERA DE LA PÁGINA ────────────────────────────────────────
 
-st.markdown("""
+DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+now = datetime.now()
+fecha_hoy_str = f"{DIAS[now.weekday()]}, {now.day} de {MESES[now.month - 1]} de {now.year}"
+
+st.markdown(f"""
 <div class="app-header">
     <h1>🍽️ Comedor Universitario</h1>
     <p>Reserva tu menú del día</p>
+    <div style="margin-top: 0.8rem; background: rgba(255, 255, 255, 0.22); display: inline-block; padding: 0.35rem 1.1rem; border-radius: 20px; font-size: 0.9rem; font-weight: 600; letter-spacing: 0.01em;">
+        📅 Menú del día: {fecha_hoy_str}
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
