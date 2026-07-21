@@ -428,7 +428,7 @@ tipo_menu = st.radio(
 )
 
 if tipo_menu == "Medio Menú":
-    st.markdown("**Elige 1 plato** (primero o segundo)")
+    st.markdown('<div class="section-label">🍲 Platos Principales (Elige 1)</div>', unsafe_allow_html=True)
     if todos_platos:
         labels = [f"🍽️ {fmt_stock(nombre_p, stock)}" for cat, nombre_p, stock in todos_platos]
         plato_idx = st.radio(
@@ -439,6 +439,7 @@ if tipo_menu == "Medio Menú":
         )
         plato_medio_sel = todos_platos[plato_idx]
     else:
+        st.error("No hay platos disponibles")
         plato_medio_sel = None
 else:
     plato_medio_sel = None
@@ -449,9 +450,8 @@ with st.form("reserva_form", clear_on_submit=False):
 
     nombre = st.text_input("👤 Nombre y Apellido *", placeholder="Ej: María García")
 
-    st.markdown('<div class="section-label">🍲 Platos Principales</div>', unsafe_allow_html=True)
-
     if tipo_menu == "Menú Entero":
+        st.markdown('<div class="section-label">🍲 Platos Principales</div>', unsafe_allow_html=True)
         col_p, col_s = st.columns(2)
         with col_p:
             st.markdown("**Primer plato**")
