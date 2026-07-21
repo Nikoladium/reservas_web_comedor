@@ -290,7 +290,7 @@ def save_reserva(reserva: dict):
                 reserva["Acomp2"], reserva["Ensalada"], reserva["Postre"],
                 reserva["Comentarios"],
                 "Activa",       # Columna K: Estado (Activa/Cancelada)
-                "Pendiente"     # Columna L: Entrega (Pendiente/Entregado)
+                "pendiente"     # Columna L: Entrega (pendiente/entregado)
             ]
             reservas_ws.append_row(row)
             adjust_stock(sheet, items_to_deduct, -1)
