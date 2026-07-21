@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
+import time
 import gspread
 from google.oauth2.service_account import Credentials
 import unicodedata
@@ -655,37 +656,60 @@ if submitted:
     elif len(acomp_sel) > 2:
         st.error("⚠️ Solo puedes elegir un máximo de 2 acompañamientos. Desmarca alguno.")
     else:
-        # Construir registro
-        if tipo_menu == "Menú Entero":
-            primero_final = primero_sel
-            segundo_final = segundo_sel
+        # Protección anti-doble clic (menos de 6 segundos con el mismo nombre)
+        ahora_ts = time.time()
+        ultimo_ts = st.session_state.get("last_submit_ts", 0)
+        ultimo_nom = st.session_state.get("last_submit_nom", "")
+        
+        if (ahora_ts - ultimo_ts < 6) and (normalizar_nombre(nombre) == normalizar_nombre(ultimo_nom)):
+            st.warning("⏳ Tu reserva se está procesando o ya ha sido enviada. Por favor, no hace falta pulsar dos veces.")
         else:
-            cat, plato_nombre, _ = plato_unico
-            primero_final = plato_nombre if cat == "Primero" else ""
-            segundo_final = plato_nombre if cat == "Segundo" else ""
+            st.session_state.last_submit_ts = ahora_ts
+            st.session_state.last_submit_nom = nombre
 
-        reserva = {
-            "Timestamp": datetime.now().strftime("%d/%m/%Y %H:%M"),
-            "Nombre": nombre.strip(),
-            "TipoMenu": tipo_menu,
-            "Primero": primero_final,
-            "Segundo": segundo_final,
-            "Acomp1": acomp_sel[0] if len(acomp_sel) >= 1 else "",
-            "Acomp2": acomp_sel[1] if len(acomp_sel) >= 2 else "",
-            "Ensalada": ensalada_sel or "",
-            "Postre": postre_sel or "",
-            "Comentarios": comentarios.strip() if comentarios else "",
-            "Estado": "Activa",
-        }
+            # Barra de progreso visual, simpática y atractiva
+            progress_bar = st.progress(0, text="👨‍🍳 Conectando con la cocina...")
+            steps = [
+                (25, "🥗 Verificando disponibilidad y cubiertos..."),
+                (60, "🍳 Guardando tu menú en cocina..."),
+                (90, "🥤 Asignando tu bebida y detalles..."),
+                (100, "✨ ¡Reserva registrada con éxito!")
+            ]
+            for pct, txt in steps:
+                time.sleep(0.12)
+                progress_bar.progress(pct, text=txt)
 
-        ok = save_reserva(reserva)
+            # Construir registro
+            if tipo_menu == "Menú Entero":
+                primero_final = primero_sel
+                segundo_final = segundo_sel
+            else:
+                cat, plato_nombre, _ = plato_unico
+                primero_final = plato_nombre if cat == "Primero" else ""
+                segundo_final = plato_nombre if cat == "Segundo" else ""
 
-        if ok:
-            st.session_state.ultima_reserva = reserva
-            st.session_state.trigger_balloons = True
-            st.rerun()
-        else:
-            st.error("❌ Error al guardar la reserva. Inténtalo de nuevo.")
+            reserva = {
+                "Timestamp": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                "Nombre": nombre.strip(),
+                "TipoMenu": tipo_menu,
+                "Primero": primero_final,
+                "Segundo": segundo_final,
+                "Acomp1": acomp_sel[0] if len(acomp_sel) >= 1 else "",
+                "Acomp2": acomp_sel[1] if len(acomp_sel) >= 2 else "",
+                "Ensalada": ensalada_sel or "",
+                "Postre": postre_sel or "",
+                "Comentarios": comentarios.strip() if comentarios else "",
+                "Estado": "Activa",
+            }
+
+            ok = save_reserva(reserva)
+
+            if ok:
+                st.session_state.ultima_reserva = reserva
+                st.session_state.trigger_balloons = True
+                st.rerun()
+            else:
+                st.error("❌ Error al guardar la reserva. Inténtalo de nuevo.")
 
 # Mostrar última reserva confirmada si existe (abajo del formulario)
 if st.session_state.ultima_reserva:
