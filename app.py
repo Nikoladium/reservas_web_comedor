@@ -469,6 +469,8 @@ tipo_menu = st.radio(
     label_visibility="collapsed",
 )
 
+nombre = st.text_input("👤 Nombre y Apellido *", placeholder="Ej: María García")
+
 if tipo_menu == "Medio Menú":
     st.markdown('<div class="section-label">🍲 Platos Principales (Elige 1)</div>', unsafe_allow_html=True)
     if todos_platos:
@@ -489,8 +491,6 @@ else:
 st.divider()
 
 with st.form("reserva_form", clear_on_submit=False):
-
-    nombre = st.text_input("👤 Nombre y Apellido *", placeholder="Ej: María García")
 
     if tipo_menu == "Menú Entero":
         st.markdown('<div class="section-label">🍲 Platos Principales</div>', unsafe_allow_html=True)
