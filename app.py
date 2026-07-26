@@ -202,6 +202,8 @@ if "cancel_step" not in st.session_state:
     st.session_state.cancel_step = "search"
 if "cancel_reserva_data" not in st.session_state:
     st.session_state.cancel_reserva_data = None
+if "form_key_counter" not in st.session_state:
+    st.session_state.form_key_counter = 0
 
 
 # ─── 4. CAPA DE BASE DE DATOS OPTIMIZADA CON CACHÉ ─────────────────
@@ -469,7 +471,7 @@ tipo_menu = st.radio(
     label_visibility="collapsed",
 )
 
-nombre = st.text_input("👤 Nombre y Apellido *", placeholder="Ej: María García", key="nombre_input")
+nombre = st.text_input("👤 Nombre y Apellido *", placeholder="Ej: María García", key=f"nombre_input_{st.session_state.form_key_counter}")
 
 if tipo_menu == "Medio Menú":
     st.markdown('<div class="section-label">🍲 Platos Principales (Elige 1)</div>', unsafe_allow_html=True)
@@ -490,7 +492,7 @@ else:
 
 st.divider()
 
-with st.form("reserva_form", clear_on_submit=True):
+with st.form(f"reserva_form_{st.session_state.form_key_counter}", clear_on_submit=True):
 
     if tipo_menu == "Menú Entero":
         st.markdown('<div class="section-label">🍲 Platos Principales</div>', unsafe_allow_html=True)
@@ -652,7 +654,7 @@ if submitted:
             if ok:
                 st.session_state.ultima_reserva = reserva
                 st.session_state.trigger_balloons = True
-                st.session_state.nombre_input = ""  # Limpiar nombre para evitar duplicados
+                st.session_state.form_key_counter += 1  # Nueva key = widgets vacios
                 st.rerun()
             else:
                 st.error("❌ Error al guardar la reserva. Inténtalo de nuevo.")
