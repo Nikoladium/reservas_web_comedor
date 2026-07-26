@@ -90,6 +90,33 @@ st.markdown("""
         box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45) !important;
     }
 
+    /* Opciones de Tipo de Menú más grandes y espaciosas */
+    div[data-testid="stRadio"] > div {
+        gap: 0.75rem !important;
+        flex-wrap: wrap !important;
+    }
+    div[data-testid="stRadio"] label {
+        font-size: 1.1rem !important;
+        font-weight: 600 !important;
+        padding: 0.6rem 1.4rem !important;
+        border-radius: 10px !important;
+        border: 2px solid #c4b5fd !important;
+        background: #faf5ff !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+        min-width: 140px !important;
+        justify-content: center !important;
+    }
+    div[data-testid="stRadio"] label:hover {
+        border-color: #8b5cf6 !important;
+        background: #ede9fe !important;
+    }
+    div[data-testid="stRadio"] label:has(input:checked) {
+        border-color: #6366f1 !important;
+        background: linear-gradient(135deg, #ede9fe 0%, #f0f0ff 100%) !important;
+        color: #4f46e5 !important;
+    }
+
     /* Resumen de reserva confirmada */
     .reserva-ok {
         background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
