@@ -431,6 +431,27 @@ todos_platos = (
 
 fecha_menu_str = parsear_fecha_menu(fecha_custom_menu)
 
+st.markdown("""
+<div style="
+    background: linear-gradient(135deg, #f59e0b 0%, #f97316 40%, #ef4444 100%);
+    padding: 1.1rem 1.5rem;
+    border-radius: 16px;
+    margin-bottom: 1rem;
+    color: white;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(249, 115, 22, 0.4);
+    width: 100%;
+    box-sizing: border-box;
+">
+    <div style="font-size: 1.35rem; font-weight: 800; letter-spacing: 0.01em; margin-bottom: 0.2rem;">
+        🎉 ¡Gracias por todo, feliz verano! 🏖️
+    </div>
+    <div style="font-size: 1.05rem; font-weight: 500; opacity: 0.93;">
+        Nos vemos a la vuelta 😊
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
 st.markdown(f"""
 <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
             padding: 2rem 1.5rem; border-radius: 16px; margin-bottom: 1.5rem;
